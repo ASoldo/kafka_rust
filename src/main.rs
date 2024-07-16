@@ -6,12 +6,14 @@ use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use uuid::Uuid;
 
+/// Structure representing a request to produce a message.
 #[derive(Deserialize)]
 struct ProduceRequest {
     message: String,
     key: String,
 }
 
+/// Structure representing a message with an ID, key, and content.
 #[derive(Serialize, Deserialize, Clone)]
 struct Message {
     id: String,
@@ -19,11 +21,22 @@ struct Message {
     message: String,
 }
 
+/// Application state holding the Kafka producer and stored messages.
 struct AppState {
     producer: FutureProducer,
     messages: Mutex<Vec<Message>>,
 }
 
+/// Produces a message to Kafka and stores it in the application state.
+///
+/// # Arguments
+///
+/// * `data` - Application state.
+/// * `req` - JSON payload containing the message and key.
+///
+/// # Returns
+///
+/// A JSON response indicating success or failure.
 async fn produce_message(
     data: web::Data<AppState>,
     req: web::Json<ProduceRequest>,
@@ -53,6 +66,16 @@ async fn produce_message(
     }
 }
 
+/// Retrieves a message by its ID.
+///
+/// # Arguments
+///
+/// * `data` - Application state.
+/// * `message_id` - The ID of the message to retrieve.
+///
+/// # Returns
+///
+/// A JSON response containing the message or an error message if not found.
 async fn get_message(data: web::Data<AppState>, message_id: web::Path<String>) -> impl Responder {
     let messages = data.messages.lock().unwrap();
     let id = message_id.clone();
@@ -62,6 +85,17 @@ async fn get_message(data: web::Data<AppState>, message_id: web::Path<String>) -
     }
 }
 
+/// Updates a message by its ID.
+///
+/// # Arguments
+///
+/// * `data` - Application state.
+/// * `message_id` - The ID of the message to update.
+/// * `req` - JSON payload containing the new message and key.
+///
+/// # Returns
+///
+/// A JSON response indicating success or failure.
 async fn update_message(
     data: web::Data<AppState>,
     message_id: web::Path<String>,
@@ -91,6 +125,16 @@ async fn update_message(
     }
 }
 
+/// Deletes a message by its ID.
+///
+/// # Arguments
+///
+/// * `data` - Application state.
+/// * `message_id` - The ID of the message to delete.
+///
+/// # Returns
+///
+/// A response indicating success or failure.
 async fn delete_message(
     data: web::Data<AppState>,
     message_id: web::Path<String>,
@@ -105,6 +149,9 @@ async fn delete_message(
     }
 }
 
+/// Main function to start the Actix web server.
+///
+/// Initializes the Kafka producer and application state, and sets up the HTTP routes.
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let producer: FutureProducer = ClientConfig::new()
