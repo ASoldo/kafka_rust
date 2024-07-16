@@ -35,9 +35,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+actix-web = "4.8.0"
 futures = "0.3.30"
 rdkafka = "0.36.2"
+serde = { version = "1.0.204", features = ["derive"] }
+serde_json = "1.0.120"
 tokio = { version = "1.38.1", features = ["full"] }
+uuid = { version = "1.10.0", features = ["v4"]}
 ```
 
 ### Running the Consumer
@@ -56,16 +60,48 @@ To run the producer, use the following command:
 cargo run --bin producer
 ```
 
-# Explanation
+### Running the Actix API
 
-### Docker Compose Setup
+To run the Actix API, use the following command:
 
-The docker-compose.yml file sets up Kafka and Zookeeper using Docker. It configures memory limits and other settings to ensure smooth operation.
+```sh
+cargo run --bin kafka_rust
+```
 
-## Producer
+### Curl API Example:
 
-The producer sends messages to the Kafka topic. Each message is associated with a key. The key can be used to ensure messages with the same key are sent to the same partition.
+Here are the curl commands to test the CRUD operations:
 
-## Consumer
+1. Produce a Message
+   To send a message to Kafka, use the following command:
 
-The consumer reads messages from the Kafka topic. It decodes the key and payload of each message and prints them to the console.
+```sh
+curl -X POST http://127.0.0.1:8080/produce -H "Content-Type: application/json" -d '{"message": "Hello, Kafka!", "key": "some_key"}'
+```
+
+2. Get a Message
+   To retrieve a message by its ID:
+
+```sh
+curl -X GET http://127.0.0.1:8080/messages/<message_id>
+```
+
+Replace <message_id> with the actual message ID returned when you produced the message.
+
+3. Update a Message
+   To update a message by its ID:
+
+```sh
+curl -X PUT http://127.0.0.1:8080/messages/<message_id> -H "Content-Type: application/json" -d '{"message": "Updated message", "key": "new_key"}'
+```
+
+Replace <message_id> with the actual message ID.
+
+4. Delete a Message
+   To delete a message by its ID:
+
+```sh
+curl -X DELETE http://127.0.0.1:8080/messages/<message_id>
+```
+
+Replace <message_id> with the actual message ID.
