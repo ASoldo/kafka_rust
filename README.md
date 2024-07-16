@@ -45,7 +45,7 @@ tokio = { version = "1.38.1", features = ["full"] }
 To run the consumer, use the following command:
 
 ```sh
-cargo run --bin consumer
+cargo run --bin consumer || cargo run --bin consumer human
 ```
 
 ### Running the Producer
