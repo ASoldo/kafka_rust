@@ -13,7 +13,7 @@ This project demonstrates how to produce and consume messages using Apache Kafka
 ### 1. Clone the Repository
 
 ```sh
-git clone https://github.com/ASoldo/kafka_rust
+git clone https://github.com/ASoldo/kafka_rust.git
 cd kafka_rust
 ```
 
