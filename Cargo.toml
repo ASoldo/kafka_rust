@@ -1,0 +1,9 @@
+[package]
+name = "kafka_rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futures = "0.3.30"
+rdkafka = "0.36.2"
+tokio = { version = "1.38.1", features = ["full"] }
