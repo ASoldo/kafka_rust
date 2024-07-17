@@ -42,6 +42,7 @@ serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.120"
 tokio = { version = "1.38.1", features = ["full"] }
 uuid = { version = "1.10.0", features = ["v4"]}
+async-stream = "0.3.5"
 ```
 
 ### Running the Consumer

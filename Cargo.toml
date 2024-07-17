@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4.8.0"
+async-stream = "0.3.5"
 futures = "0.3.30"
 rdkafka = "0.36.2"
 serde = { version = "1.0.204", features = ["derive"] }

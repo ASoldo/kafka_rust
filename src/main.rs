@@ -4,6 +4,7 @@ use rdkafka::producer::{FutureProducer, FutureRecord};
 use rdkafka::util::Timeout;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
 /// Structure representing a request to produce a message.
@@ -14,17 +15,18 @@ struct ProduceRequest {
 }
 
 /// Structure representing a message with an ID, key, and content.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct Message {
     id: String,
     key: String,
     message: String,
 }
 
-/// Application state holding the Kafka producer and stored messages.
+/// Application state holding the Kafka producer, stored messages, and a broadcaster for SSE.
 struct AppState {
     producer: FutureProducer,
     messages: Mutex<Vec<Message>>,
+    broadcaster: broadcast::Sender<Message>,
 }
 
 /// Produces a message to Kafka and stores it in the application state.
@@ -53,7 +55,9 @@ async fn produce_message(
                 key: req.key.clone(),
                 message: req.message.clone(),
             };
-            data.messages.lock().unwrap().push(new_message);
+            data.messages.lock().unwrap().push(new_message.clone());
+
+            let _ = data.broadcaster.send(new_message);
 
             HttpResponse::Ok().json(format!(
                 "Message '{}' with key '{}' sent successfully. ID: {}",
@@ -113,10 +117,14 @@ async fn update_message(
                 .key(&message.key);
 
             match data.producer.send(record, Timeout::Never).await {
-                Ok(_) => HttpResponse::Ok().json(format!(
-                    "Message '{}' with key '{}' updated successfully",
-                    req.message, req.key
-                )),
+                Ok(_) => {
+                    let _ = data.broadcaster.send(message.clone());
+
+                    HttpResponse::Ok().json(format!(
+                        "Message '{}' with key '{}' updated successfully",
+                        req.message, req.key
+                    ))
+                }
                 Err(e) => HttpResponse::InternalServerError()
                     .body(format!("Failed to update message: {:?}", e)),
             }
@@ -149,6 +157,29 @@ async fn delete_message(
     }
 }
 
+/// Handles Server-Side Events (SSE) connections.
+///
+/// # Arguments
+///
+/// * `data` - Application state.
+///
+/// # Returns
+///
+/// A streaming response sending new messages as they are produced.
+async fn sse(data: web::Data<AppState>) -> impl Responder {
+    let mut rx = data.broadcaster.subscribe();
+
+    HttpResponse::Ok()
+        .content_type("text/event-stream")
+        .streaming(
+            async_stream::stream! {
+                while let Ok(message) = rx.recv().await {
+                    yield Ok::<_, actix_web::Error>(web::Bytes::from(format!("data: {:?}\n\n", message)));
+                }
+            },
+        )
+}
+
 /// Main function to start the Actix web server.
 ///
 /// Initializes the Kafka producer and application state, and sets up the HTTP routes.
@@ -159,9 +190,12 @@ async fn main() -> std::io::Result<()> {
         .create()
         .expect("Producer creation error");
 
+    let (tx, _rx) = broadcast::channel(100);
+
     let app_state = web::Data::new(AppState {
         producer,
         messages: Mutex::new(Vec::new()),
+        broadcaster: tx,
     });
 
     HttpServer::new(move || {
@@ -171,6 +205,7 @@ async fn main() -> std::io::Result<()> {
             .route("/messages/{id}", web::get().to(get_message))
             .route("/messages/{id}", web::put().to(update_message))
             .route("/messages/{id}", web::delete().to(delete_message))
+            .route("/events", web::get().to(sse))
     })
     .bind("127.0.0.1:8080")?
     .run()
