@@ -66,7 +66,7 @@ cargo run --bin producer
 To run the Actix API, use the following command:
 
 ```sh
-cargo run --bin kafka_rust
+cargo run --bin api
 ```
 
 ### Curl API Example:
